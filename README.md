@@ -33,36 +33,6 @@ uvicorn main:app --reload
 
 Open http://localhost:8000 in your browser.
 
-## Deploying to Railway
-
-### One-click via CLI
-
-```bash
-# Install Railway CLI
-npm install -g @railway/cli
-
-# Log in
-railway login
-
-# Create a new project from this directory
-railway init
-
-# Set environment variables
-railway variables set SERPAPI_API_KEY=your_serpapi_key_here
-railway variables set ANTHROPIC_API_KEY=your_anthropic_key_here
-
-# Deploy
-railway up
-```
-
-Railway will detect `railway.toml` and use Nixpacks to build and run `uvicorn main:app --host 0.0.0.0 --port $PORT`.
-
-### Via Railway dashboard
-
-1. Go to [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo**.
-2. Connect this repo.
-3. In **Variables**, add `SERPAPI_API_KEY` and `ANTHROPIC_API_KEY`.
-4. Railway auto-detects `railway.toml` and deploys on every push to main.
 
 ## Architecture
 
