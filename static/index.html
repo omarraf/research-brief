@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Research Brief Bot</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f9f9f8;
+      --surface: #ffffff;
+      --border: #e5e5e3;
+      --text: #1a1a1a;
+      --text-muted: #737370;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.04);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100dvh;
+      padding: 2rem 1rem 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    main { flex: 1; }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 1.75rem;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    header p {
+      margin-top: .4rem;
+      font-size: .9rem;
+      color: var(--text-muted);
+    }
+
+    /* ── Example prompts ── */
+    .examples {
+      max-width: 720px;
+      margin: .75rem auto 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: .45rem;
+    }
+
+    .examples-label {
+      font-size: .8rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      align-self: center;
+    }
+
+    .example-btn {
+      font-size: .8rem;
+      padding: .35rem .8rem;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: var(--surface);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: border-color .15s, color .15s, background .15s;
+      white-space: nowrap;
+    }
+
+    .example-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: #eff6ff;
+    }
+
+    /* ── Search card ── */
+    .search-card {
+      max-width: 720px;
+      margin: 0 auto;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.25rem;
+      display: flex;
+      gap: .75rem;
+    }
+
+    #query {
+      flex: 1;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: .65rem .9rem;
+      font-size: 1rem;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    #query:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+    }
+
+    #generate-btn {
+      padding: .65rem 1.25rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      font-size: .95rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background .15s, opacity .15s;
+    }
+
+    #generate-btn:hover:not(:disabled) { background: var(--accent-hover); }
+    #generate-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Status row ── */
+    .status {
+      max-width: 720px;
+      margin: .85rem auto 0;
+      font-size: .83rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      min-height: 1.4rem;
+    }
+
+    .spinner {
+      width: 13px; height: 13px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      flex-shrink: 0;
+      display: none;
+    }
+
+    .spinner.active { display: block; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Output ── */
+    #output-container {
+      max-width: 720px;
+      margin: 1.25rem auto 0;
+      display: none;
+    }
+
+    #output-container.visible { display: block; }
+
+    #output {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.75rem 2rem;
+      line-height: 1.7;
+      font-size: .95rem;
+    }
+
+    /* markdown */
+    #output h1, #output h2, #output h3, #output h4 {
+      margin-top: 1.5em;
+      margin-bottom: .5em;
+      font-weight: 700;
+      letter-spacing: -.01em;
+    }
+    #output h1:first-child,
+    #output h2:first-child,
+    #output h3:first-child { margin-top: 0; }
+
+    #output h1 { font-size: 1.35rem; }
+    #output h2 { font-size: 1.15rem; border-bottom: 1px solid var(--border); padding-bottom: .35em; }
+    #output h3 { font-size: 1rem; }
+
+    #output p { margin-bottom: .9em; }
+    #output ul, #output ol { padding-left: 1.4em; margin-bottom: .9em; }
+    #output li { margin-bottom: .3em; }
+    #output strong { font-weight: 600; }
+
+    #output a {
+      color: var(--accent);
+      text-decoration: none;
+      word-break: break-all;
+    }
+    #output a:hover { text-decoration: underline; }
+
+    #output blockquote {
+      border-left: 3px solid var(--border);
+      margin: .8em 0;
+      padding: .4em 1em;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    #output code {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: .15em .4em;
+      font-size: .85em;
+      font-family: "SF Mono", Consolas, monospace;
+    }
+
+    #output pre code {
+      display: block;
+      padding: 1em;
+      overflow-x: auto;
+      border-radius: 7px;
+    }
+
+    #output .cursor {
+      display: inline-block;
+      width: 2px;
+      height: 1em;
+      background: var(--accent);
+      vertical-align: text-bottom;
+      animation: blink .9s step-end infinite;
+    }
+
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* ── Error ── */
+    #error-msg {
+      max-width: 720px;
+      margin: 1rem auto 0;
+      padding: .75rem 1rem;
+      border: 1px solid #fca5a5;
+      background: #fff5f5;
+      border-radius: var(--radius);
+      color: #b91c1c;
+      font-size: .9rem;
+      display: none;
+    }
+
+    #error-msg.visible { display: block; }
+
+    /* ── Footer ── */
+    footer {
+      max-width: 720px;
+      margin: 2.5rem auto 0;
+      padding: 1.25rem 0 2rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .footer-about {
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .footer-about h3 {
+      font-size: .8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--text-muted);
+      margin-bottom: .5rem;
+    }
+
+    .footer-about p {
+      font-size: .82rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    .footer-links {
+      display: flex;
+      flex-direction: column;
+      gap: .35rem;
+      flex-shrink: 0;
+    }
+
+    .footer-links a {
+      font-size: .8rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: .3rem;
+      transition: color .15s;
+    }
+
+    .footer-links a:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+<main>
+
+  <header>
+    <h1>Research Brief Bot</h1>
+    <p>Enter any topic and get a structured research brief from live academic, news, and web sources.</p>
+  </header>
+
+  <!-- Search -->
+  <div class="search-card">
+    <input
+      id="query"
+      type="text"
+      placeholder="e.g. impact of microplastics on marine ecosystems"
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <button id="generate-btn">Generate Brief</button>
+  </div>
+
+  <div class="examples">
+    <span class="examples-label">Try an example →</span>
+    <button class="example-btn">reinforcement learning for robotic manipulation and dexterous control</button>
+    <button class="example-btn">autonomous LLM agents with tool use and long-horizon planning</button>
+    <button class="example-btn">multimodal foundation models for vision and language reasoning</button>
+    <button class="example-btn">AI alignment techniques and scalable oversight</button>
+    <button class="example-btn">neuromorphic chips and event-driven neural computation</button>
+  </div>
+
+  <div class="status">
+    <div class="spinner" id="spinner"></div>
+    <span id="status-text"></span>
+  </div>
+
+  <div id="error-msg"></div>
+
+  <div id="output-container">
+    <div id="output"></div>
+  </div>
+
+</main>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-about">
+    <h3>About</h3>
+    <p>
+      Research Brief Bot uses <strong>SerpAPI</strong> to concurrently fetch 5 results each from
+      Google Scholar, Google News, and Google Search, then uses AI to synthesise them into a
+      structured brief — streamed back to you in real time.
+    </p>
+  </div>
+  <div class="footer-links">
+    <a href="https://serpapi.com" target="_blank" rel="noopener">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6h8M6 2l4 4-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      SerpAPI
+    </a>
+  </div>
+</footer>
+
+<script>
+  const queryInput      = document.getElementById('query');
+  const btn             = document.getElementById('generate-btn');
+  const spinner         = document.getElementById('spinner');
+  const statusText      = document.getElementById('status-text');
+  const outputDiv       = document.getElementById('output');
+  const outputContainer = document.getElementById('output-container');
+  const errorMsg        = document.getElementById('error-msg');
+
+  marked.setOptions({ gfm: true, breaks: false });
+
+  let accumulated = '';
+  let streaming = false;
+
+  function setStatus(msg, loading = false) {
+    statusText.textContent = msg;
+    spinner.classList.toggle('active', loading);
+  }
+
+  function showError(msg) {
+    errorMsg.textContent = msg;
+    errorMsg.classList.add('visible');
+  }
+
+  function clearError() {
+    errorMsg.textContent = '';
+    errorMsg.classList.remove('visible');
+  }
+
+  function renderMarkdown(text, done = false) {
+    outputDiv.innerHTML = marked.parse(text) + (done ? '' : '<span class="cursor"></span>');
+  }
+
+  async function generate() {
+    const q = queryInput.value.trim();
+    if (!q || streaming) return;
+
+    streaming = true;
+    accumulated = '';
+    clearError();
+    outputContainer.classList.remove('visible');
+    outputDiv.innerHTML = '';
+    btn.disabled = true;
+
+    setStatus('Searching Google Scholar, News & Web via SerpAPI…', true);
+
+    try {
+      const res = await fetch(`/api/brief?q=${encodeURIComponent(q)}`);
+
+      if (!res.ok) {
+        let detail = `Server error ${res.status}`;
+        try { const j = await res.json(); detail = j.detail || detail; } catch (_) {}
+        throw new Error(detail);
+      }
+
+      outputContainer.classList.add('visible');
+      setStatus('Generating brief…', true);
+
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        accumulated += decoder.decode(value, { stream: true });
+        renderMarkdown(accumulated, false);
+        outputDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }
+
+      renderMarkdown(accumulated, true);
+      setStatus('Brief ready.', false);
+
+    } catch (err) {
+      setStatus('', false);
+      showError(err.message || 'Something went wrong. Please try again.');
+    } finally {
+      streaming = false;
+      btn.disabled = false;
+    }
+  }
+
+  btn.addEventListener('click', generate);
+  queryInput.addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
+
+  document.querySelectorAll('.example-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      queryInput.value = b.textContent;
+      queryInput.focus();
+    });
+  });
+</script>
+
+</body>
+</html>
