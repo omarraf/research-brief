@@ -2,6 +2,8 @@
 
 A FastAPI app that concurrently fetches Google Scholar, Google News, and Google Web results via SerpAPI, then streams a structured research brief from Claude back to the browser in real time.
 
+**Live demo:** https://research-brief-production-bda3.up.railway.app/
+
 ## Local development
 
 ### Prerequisites
@@ -36,21 +38,6 @@ Open http://localhost:8000 in your browser.
 
 ## Architecture
 
-```
-Browser  ──GET /api/brief?q=...──►  FastAPI
-                                       │
-                          asyncio.gather() with ThreadPoolExecutor
-                          ┌────────────┬─────────────┬────────────┐
-                     Scholar (SerpAPI) News (SerpAPI) Web (SerpAPI)
-                          └────────────┴─────────────┴────────────┘
-                                       │
-                          Build prompt from results
-                                       │
-                          Anthropic claude-sonnet-4-20250514
-                                       │
-                    StreamingResponse (text/plain) ──► Browser
-                    (marked.js renders markdown live)
-```
 
 ## Environment variables
 
