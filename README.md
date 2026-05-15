@@ -37,6 +37,8 @@ Open http://localhost:8000 in your browser.
 
 
 ## Architecture
+<img width="500" height="600" alt="image" src="https://github.com/user-attachments/assets/e857bcec-5bd3-446f-a5eb-4f0fd9f9c585" />
+
 
 
 ## Environment variables
